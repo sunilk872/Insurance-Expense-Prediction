@@ -12,8 +12,10 @@ import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
+import requests
+import pickle
+from io import BytesIO
 from sklearn.ensemble import GradientBoostingRegressor
-from pickle import load
 
 # Set the page title
 st.title("Model Deployment: Prediction of Medical Expenses")
@@ -50,12 +52,19 @@ df = user_input_features()
 st.subheader("User Input Parameters")
 st.write(df)
 
-# Load the trained model
-MODEL_FILE = "E:\\excelR\\project1\\finalized_model.pkl"  # Ensure the correct path
+# Load the trained model from GitHub
+MODEL_URL = "https://github.com/sunilk872/Insurance-Expense-Prediction/raw/main/finalized_model.pkl"
+
 try:
-    loaded_model = load(open(MODEL_FILE, "rb"))
-except FileNotFoundError:
-    st.error("Model file not found! Please ensure the model file is present.")
+    response = requests.get(MODEL_URL)
+    if response.status_code == 200:
+        loaded_model = pickle.load(BytesIO(response.content))
+    else:
+        st.error("Failed to fetch the model file from GitHub.")
+        loaded_model = None
+except Exception as e:
+    st.error(f"Error loading model: {e}")
+    loaded_model = None
 
 # Prediction
 if loaded_model:
