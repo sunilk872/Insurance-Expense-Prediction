@@ -1,11 +1,6 @@
-# Core dependencies
-streamlit
-pandas
-numpy
-scikit-learn
-matplotlib
-seaborn
-pickleshare
+pandas==2.2.2
+numpy==1.26.4
+pickleshare==0.7.5
+streamlit==1.39.0
+scikit-learn==1.4.2
 
-# Jupyter Notebook (optional, if needed)
-notebook
