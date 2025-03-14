@@ -73,7 +73,7 @@ def user_input_features():
 df = user_input_features()
 
 # Main content layout
-col1, col2 = st.columns([1, 2])
+#col1, col2 = st.columns([1, 2])
 
 with col1:
     st.markdown("<h3 class='section-header'>Input Summary</h3>", unsafe_allow_html=True)
