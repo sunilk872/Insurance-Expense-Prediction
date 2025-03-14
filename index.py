@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
 import streamlit as st
@@ -6,117 +7,118 @@ import seaborn as sns
 import requests
 import pickle
 from io import BytesIO
+from sklearn.ensemble import GradientBoostingRegressor
 
-# Set the page config for a better UI experience
-st.set_page_config(
-    page_title="Medical Expense Prediction",
-    page_icon="💰",
-    layout="wide"
-)
+# Custom CSS styling
+st.markdown("""
+<style>
+    .title {
+        background-color: #0066cc;
+        padding: 15px;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .result {
+        background-color: #4CAF50;
+        padding: 15px;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        font-size: 24px;
+        margin: 20px 0;
+    }
+    .section-header {
+        color: #0066cc;
+        border-bottom: 3px solid #0066cc;
+        padding-bottom: 10px;
+        margin: 20px 0;
+    }
+    .sidebar .sidebar-content {
+        background-color: #f0f2f6;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# Apply custom styles
-st.markdown(
-    """
-    <style>
-        .stApp {
-            background-color: #f5f7fa;
-        }
-        .sidebar .sidebar-content {
-            background-color: #e3e6f3;
-        }
-        .stMarkdown h1 {
-            color: #374151;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+# Page title with custom styling
+st.markdown("<h1 class='title'>Medical Expenses Predictor</h1>", unsafe_allow_html=True)
 
-# Title with emoji for better UX
-st.title("💰 Medical Expense Prediction")
-
-# Sidebar header for input parameters
-st.sidebar.header("🔢 User Input Parameters")
+# Sidebar styling and inputs
+st.sidebar.markdown("<h2 style='color:#0066cc;'>Patient Details</h2>", unsafe_allow_html=True)
 
 def user_input_features():
-    AGE = st.sidebar.slider("Insert Age", min_value=18, max_value=100, value=30)
-    SEX = st.sidebar.radio("Gender:", ("Male", "Female"))
-    BMI = st.sidebar.slider("Insert BMI", min_value=10.0, max_value=50.0, value=25.0, step=0.1)
-    CHILDREN = st.sidebar.selectbox("Number of Children:", [0, 1, 2, 3, 4, 5])
-    SMOKER = st.sidebar.radio("Smoker:", ("Yes", "No"))
-    REGION = st.sidebar.selectbox("Region:", ["Southwest", "Southeast", "Northwest", "Northeast"])
+    with st.sidebar.expander("Demographic Information", expanded=True):
+        AGE = st.number_input("Age", min_value=0, max_value=100, value=25)
+        SEX = st.selectbox("Gender", ("Male", "Female"), format_func=lambda x: x)
+        CHILDREN = st.selectbox("Number of Children", options=range(0, 6), index=0)
+        REGION = st.selectbox(
+            "Region",
+            ("Southwest", "Southeast", "Northwest", "Northeast"),
+            index=0
+        )
     
-    data = {
+    with st.sidebar.expander("Health Information", expanded=True):
+        BMI = st.number_input("BMI", min_value=0.0, max_value=60.0, value=25.0, step=0.1)
+        SMOKER = st.selectbox("Smoker", ("Yes", "No"), index=1)
+    
+    return pd.DataFrame({
         "age": AGE,
         "sex": 1 if SEX == "Male" else 0,
         "bmi": BMI,
         "children": CHILDREN,
         "smoker": 1 if SMOKER == "Yes" else 0,
-        "region": ["Southwest", "Southeast", "Northwest", "Northeast"].index(REGION)
-    }
-    return pd.DataFrame(data, index=[0])
+        "region": ["southwest", "southeast", "northwest", "northeast"].index(REGION.lower())
+    }, index=[0])
 
-# Collect user inputs
 df = user_input_features()
 
-# Display user inputs in an elegant format
-st.subheader("📊 User Input Parameters")
-st.write(df.style.set_properties(**{'background-color': '#f8f9fa', 'color': '#343a40', 'border-radius': '10px'}))
+# Main content
+col1, col2 = st.columns([1, 2])
 
-# Load the trained model from GitHub
+with col1:
+    st.markdown("<h3 class='section-header'>Input Summary</h3>", unsafe_allow_html=True)
+    styled_df = df.copy()
+    styled_df.columns = [col.capitalize() for col in styled_df.columns]
+    st.dataframe(styled_df.style.format(precision=2).set_properties(**{
+        'background-color': '#f0f2f6',
+        'color': '#0066cc',
+        'border-color': 'white'
+    }))
+
+# Load model and make prediction
 MODEL_URL = "https://github.com/sunilk872/Insurance-Expense-Prediction/raw/main/finalized_model.pkl"
-loaded_model = None
 
 try:
     response = requests.get(MODEL_URL)
     if response.status_code == 200:
         loaded_model = pickle.load(BytesIO(response.content))
+        prediction = loaded_model.predict(df)
+        prediction = np.round(prediction, 2)
+        
+        with col2:
+            st.markdown("<h3 class='section-header'>Prediction Result</h3>", unsafe_allow_html=True)
+            st.markdown(f"<div class='result'>Estimated Medical Costs:<br>${prediction[0]:,.2f}</div>", 
+                       unsafe_allow_html=True)
+            
+            # Visualization
+            st.markdown("<h3 class='section-header'>Cost Drivers Analysis</h3>", unsafe_allow_html=True)
+            fig, ax = plt.subplots(figsize=(10, 6))
+            features = ['Age', 'BMI', 'Smoker', 'Children', 'Region']
+            importance = loaded_model.feature_importances_
+            sns.barplot(x=importance, y=features, palette="Blues_d", ax=ax)
+            ax.set_title("Feature Importance in Cost Prediction")
+            ax.set_xlabel("Importance Score")
+            st.pyplot(fig)
+            
     else:
-        st.error("🚨 Failed to fetch the model file from GitHub.")
+        st.error("Failed to load prediction model. Please try again later.")
 except Exception as e:
-    st.error(f"❌ Error loading model: {e}")
+    st.error(f"Error in prediction system: {str(e)}")
 
-# Prediction
-if loaded_model:
-    prediction = loaded_model.predict(df)
-    prediction = np.round(prediction, 2)
-    
-    # Display the prediction in a highlighted box
-    st.subheader("💡 Prediction Result")
-    st.markdown(
-        f"""
-        <div style="padding: 15px; background-color: #d1e7dd; border-radius: 10px; font-size: 18px;">
-            ✅ **Predicted Medical Expenses:** ${prediction[0]:,.2f}
-        </div>
-        """, unsafe_allow_html=True
-    )
-    
-    # Visualization Section
-    st.subheader("📉 Visualization: How Inputs Affect Prediction")
-    
-    # Bar chart of user inputs
-    fig, ax = plt.subplots(figsize=(8, 5))
-    input_labels = ["Age", "Gender", "BMI", "Children", "Smoker", "Region"]
-    input_values = [
-        df["age"].iloc[0],
-        df["sex"].iloc[0],
-        df["bmi"].iloc[0],
-        df["children"].iloc[0],
-        df["smoker"].iloc[0],
-        df["region"].iloc[0]
-    ]
-    
-    sns.barplot(x=input_labels, y=input_values, ax=ax, palette="magma")
-    ax.set_title("User Input Parameters", fontsize=14)
-    ax.set_ylabel("Value")
-    ax.set_xlabel("Parameters")
-    st.pyplot(fig)
-    
-    # Histogram for predicted expenses
-    st.subheader("📊 Distribution of Predicted Medical Expenses")
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.histplot(prediction, kde=True, ax=ax, color="blue", bins=10)
-    ax.set_title("Predicted Medical Expenses Distribution", fontsize=14)
-    ax.set_xlabel("Medical Expenses ($)")
-    ax.set_ylabel("Frequency")
-    st.pyplot(fig)
+# Add footer
+st.markdown("---")
+st.markdown("<div style='text-align: center; color: #666; margin-top: 40px;'>"
+            "Medical Cost Prediction System v1.0<br>"
+            "Data Source: Insurance Dataset</div>", 
+            unsafe_allow_html=True)
