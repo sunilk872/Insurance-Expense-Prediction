@@ -8,6 +8,9 @@ import requests
 import pickle
 from io import BytesIO
 
+# Set Streamlit page configuration
+st.set_page_config(page_title="Insurance Expense Prediction 💰", layout="wide")
+
 # Custom CSS styling
 st.markdown("""
 <style>
