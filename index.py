@@ -41,7 +41,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Page title
-st.title("💰 Medical Expense Prediction App")
 st.markdown("<h1 class='title'>Medical Expenses Predictor</h1>", unsafe_allow_html=True)
 
 # Sidebar inputs
